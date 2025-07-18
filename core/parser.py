@@ -157,8 +157,9 @@ class Parser:
                 time.sleep(5)
                 if self.is_captcha() or self.is_spam():
                     raise ValueError("Profile catched spam block. Switching...")
-                phone = self.get_phone()
+                phone: str = self.get_phone()
                 if phone:
+                    phone = phone.replace(' ', '')
                     phone = phone.lstrip('+')
                     phone = phone.lstrip('0')
                     if not phone.startswith('380'):

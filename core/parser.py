@@ -43,7 +43,7 @@ class Parser:
         self.state = ParserState()
         self._running = False
         self.options = Options()
-        self.options.add_argument("--headless=new")
+        # self.options.add_argument("--headless=new")
         self.options.add_argument("--disable-blink-features=AutomationControlled")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")

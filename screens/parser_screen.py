@@ -1,7 +1,7 @@
 from textual.screen import ModalScreen, Screen
 from textual.widgets import Header, Footer, Input, Static, RichLog, Button, Label
 from textual.containers import Container, Grid
-from modules.parser import Parser
+from core.parser import Parser
 from threading import Thread
 import datetime
 import csv
@@ -96,7 +96,7 @@ class ParserScreen(Screen):
         
         container.mount(Static(f"[bold green]URL:[/bold green] {url}"))
         container.mount(RichLog(id="log-output", markup=True))
-        container.mount(Button("Экспорт в CSV", id="export-button", disabled=True))
+        container.mount(Button("Экспорт в CSV", id="export-button"))
         self.start_paring(url)
 
 

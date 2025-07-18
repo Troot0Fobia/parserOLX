@@ -1,6 +1,6 @@
 from textual.app import App
 from core.paths import ROOT_DIR
-from modules.parser import Parser
+from core.parser import Parser
 import json
 
 from screens.main_menu import MainMenu

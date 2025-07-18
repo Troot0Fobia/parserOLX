@@ -1,6 +1,5 @@
 /database/database.db
 /results
-/settings.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

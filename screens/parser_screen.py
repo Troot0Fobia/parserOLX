@@ -6,6 +6,7 @@ from threading import Thread
 import datetime
 import csv
 import tzlocal
+import pyperclip
 
 from core.paths import RESULTS
 
@@ -80,7 +81,6 @@ class ParserScreen(Screen):
             Input(
                 placeholder="Вставьте поисковую ссылку...",
                 compact=True,
-                restrict=r'(http(s)?\:\/\/)?(www\.)?olx\.ua\/\S+',
                 validate_on=["submitted"],
                 id="input-link"
             ),
@@ -150,6 +150,11 @@ class ParserScreen(Screen):
 
 
     def on_key(self, event):
+        if event.key == "ctrl+v":
+            text = pyperclip.paste()
+            input_widget = self.query_one('#input-link', Input)
+            if input_widget is not None:
+                input_widget.value = text
         if event.key == 'escape' and self.parser._running:
             def check_quit(finish: bool | None) -> None:
                 if finish:

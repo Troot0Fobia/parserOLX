@@ -28,8 +28,6 @@ PAGINATION_ITEMS = 'li[data-testid="pagination-list-item"]'
 AUTH_CHECK = '[data-testid="qa-user-dropdown"]'
 CAPTCHA_ROOT = 'iframe[title="reCAPTCHA"], div[id*="captcha"], [data-testid*="captcha"]'
 SPAM_ALERT = 'p[class="css-rdovvl"][role="alert"]'
-# SPAM_MESSAGE = 'Неможливо продовжити, оскільки ми виявили підозрілу активність'
-# SPAM_MESSAGE2 = 'Suspicious activity'
 
 PAGINATION_NEXT = 'a[data-testid="pagination-forward"][data-cy="pagination-forward"]'
 
@@ -46,10 +44,8 @@ class Parser:
     def __init__(self, app):
         self.main_app = app
         self.load_state()
-        # self.state = ParserState()
         self._running = False
         self.options = Options()
-        # self.options.add_argument("--headless=new")
         self.options.add_argument("--disable-blink-features=AutomationControlled")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
@@ -81,8 +77,8 @@ class Parser:
 
             self.options.add_argument(f"--profile-directory={profile}")
             self.driver = webdriver.Chrome(options=self.options)
-            if self.state.page_number != 1:
-                self.fix_url()
+            # if self.state.page_number != 1:
+            self.fix_url()
             self.driver.get(self.state.url)
             self.driver.maximize_window()
 
@@ -367,6 +363,9 @@ class Parser:
     def fix_url(self):
         obj = urlparse(self.state.url)
         query_params = parse_qs(obj.query)
-        query_params['page'] = [str(self.state.page_number)]
-        new_query = urlencode(query_params, doseq=True)
-        self.state.url = urlunparse(obj._replace(query=new_query))
+        if query_params['page']:
+            self.state.page_number = int(query_params['page'])
+        else:
+            query_params['page'] = [str(self.state.page_number)]
+            new_query = urlencode(query_params, doseq=True)
+            self.state.url = urlunparse(obj._replace(query=new_query))

@@ -27,6 +27,7 @@ AUTH_CHECK = '[data-testid="qa-user-dropdown"]'
 CAPTCHA_ROOT = 'iframe[title="reCAPTCHA"], div[id*="captcha"], [data-testid*="captcha"]'
 SPAM_ALERT = 'p[class="css-rdovvl"][role="alert"]'
 SPAM_MESSAGE = 'Неможливо продовжити, оскільки ми виявили підозрілу активність'
+SPAM_MESSAGE2 = 'Suspicious activity'
 
 PAGINATION_NEXT = 'a[data-testid="pagination-forward"][data-cy="pagination-forward"]'
 
@@ -154,9 +155,11 @@ class Parser:
                 if self.is_captcha() or self.is_spam():
                     raise ValueError("Profile catched spam block. Switching...")
                 phone = self.get_phone()
-                phone = phone.lstrip('+')
-                if not phone.startswith('380'):
-                    phone = '380' + phone
+                if phone:
+                    phone = phone.lstrip('+')
+                    phone = phone.lstrip('0')
+                    if not phone.startswith('380'):
+                        phone = '380' + phone
                 user_name = self.get_user_name()
                 profile_link = self.get_user_profile_link()
                 city, region = self.get_location()
@@ -196,7 +199,7 @@ class Parser:
     def is_spam(self):
         try:
             spam_alert = self.driver.find_element(By.CSS_SELECTOR, SPAM_ALERT)
-            if spam_alert and SPAM_MESSAGE in spam_alert.text:
+            if spam_alert:
                 return True
         except Exception:
             pass
@@ -255,14 +258,18 @@ class Parser:
         try:
             aside = self.driver.find_element(By.CSS_SELECTOR, MAP_ASIDE)
         except Exception:
-            return None
-        city, region = None, None
+            return '', ''
+        city, region = '', ''
         try:
-            city = aside.find_element(By.CSS_SELECTOR, MAP_CITY).text.strip().rstrip(',')
+            city = aside.find_element(By.CSS_SELECTOR, MAP_CITY).text
+            if city:
+                city = city.strip().rstrip(',')
         except Exception:
             pass
         try:
-            region = aside.find_element(By.CSS_SELECTOR, MAP_REGION).text.strip()
+            region = aside.find_element(By.CSS_SELECTOR, MAP_REGION).text
+            if region:
+                region = region.strip()
         except Exception:
             pass
         return city, region

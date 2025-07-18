@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 import time
+from pathlib import Path
 import platform
 
 BASE_URL = 'https://www.olx.ua'
@@ -106,6 +107,7 @@ class Parser:
                 except ValueError as e:
                     self.log_output(f"Пойман спам блок для профиля: {profile}: {e}", 0)
                     print(f"Catched spam block for profile: {profile}: {e}")
+                    self.stop()
                     break
                 
                 if self.next_page_button is None:
@@ -152,6 +154,9 @@ class Parser:
                 if self.is_captcha() or self.is_spam():
                     raise ValueError("Profile catched spam block. Switching...")
                 phone = self.get_phone()
+                phone = phone.lstrip('+')
+                if not phone.startswith('380'):
+                    phone = '380' + phone
                 user_name = self.get_user_name()
                 profile_link = self.get_user_profile_link()
                 city, region = self.get_location()

@@ -52,7 +52,7 @@ class Parser:
         if platform.system() == "Linux":
             profiles_path = Path.home() / '.config' / 'chromium'
         else:
-            profiles_path = Path.home() / 'AppData' / 'Local' / 'Google' / 'Chrome' / 'User Data'
+            profiles_path = Path('C:/') / '1' / 'GoogleChromePortable' / 'Data' / 'profile'
         self.options.add_argument(f"--user-data-dir={profiles_path}")
 
 

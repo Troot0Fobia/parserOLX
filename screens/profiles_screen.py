@@ -81,7 +81,7 @@ class ProfilesScreen(ModalScreen):
         if system == "Linux":
             profiles_path = home_dir / '.config' / 'chromium'
         elif system == "Windows":
-            profiles_path = home_dir / 'AppData' / 'Local' / 'Google' / 'Chrome' / 'User Data'
+            profiles_path = Path('C:/') / '1' / 'GoogleChromePortable' / 'Data' / 'profile'
         else:
             return {}
 

@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 import time
+import platform
 
 BASE_URL = 'https://www.olx.ua'
 LISTING_GRID = '[data-testid="listing-grid"]'
@@ -47,7 +48,12 @@ class Parser:
         self.options.add_argument("--disable-blink-features=AutomationControlled")
         self.options.add_argument("--no-sandbox")
         self.options.add_argument("--disable-dev-shm-usage")
-        self.options.add_argument("--user-data-dir=/home/archy/.config/chromium")
+        profiles_path = ''
+        if platform.system() == "Linux":
+            profiles_path = Path.home() / '.config' / 'chromium'
+        else:
+            profiles_path = Path.home() / 'AppData' / 'Local' / 'Google' / 'Chrome' / 'User Data'
+        self.options.add_argument(f"--user-data-dir={profiles_path}")
 
 
     def start(self, url, log_output: callable, add_data: callable):

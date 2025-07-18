@@ -8,7 +8,7 @@ import csv
 import tzlocal
 import pyperclip
 
-from core.paths import RESULTS
+from core.paths import RESULTS, ROOT_DIR
 
 
 class StopParsingScreen(ModalScreen[bool]):
@@ -73,10 +73,15 @@ class ParserScreen(Screen):
         super().__init__()
         self.parser = Parser(self.app)
         self.data = []
+        self.proceed = False
 
 
     def compose(self):
         yield Header(show_clock=True)
+        if (ROOT_DIR / 'state.json').exists():
+            data = (ROOT_DIR / 'state.json').read_text()
+            yield Label("Есть сохраненнные данные, продолжить?", id="proceed-question")
+            yield Button("Да", variant="success", id="proceed")
         yield Container(
             Input(
                 placeholder="Вставьте поисковую ссылку...",
@@ -90,23 +95,22 @@ class ParserScreen(Screen):
 
     def on_input_submitted(self, event: Input.Submitted):
         url = event.value
+        self.start_paring(url)
 
+
+    def start_paring(self, url):
         container = self.query_one("#main-container", Container)
         container.query_children('#input-link').remove()
         
         container.mount(Static(f"[bold green]URL:[/bold green] {url}"))
         container.mount(RichLog(id="log-output", markup=True))
         container.mount(Button("Экспорт в CSV", id="export-button"))
-        self.start_paring(url)
-
-
-    def start_paring(self, url):
         t = Thread(target=self._parser_task, args=(url,), daemon=True)
         t.start()
 
 
     def _parser_task(self, url):
-        self.parser.start(url, self.add_log_output, self.add_data)
+        self.parser.start(url, self.add_log_output, self.add_data, self.proceed)
 
     
     def add_data(self, data: dict) -> None:
@@ -131,7 +135,7 @@ class ParserScreen(Screen):
             if not RESULTS.exists():
                 RESULTS.mkdir(parents=True, exist_ok=True)
 
-            filename = RESULTS / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H:%M:%S")}.csv'
+            filename = RESULTS / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
             with open(filename, 'w', newline='', encoding='utf-8') as file:
                 writer = csv.DictWriter(file, fieldnames=[
                     "Имя продавца", "Номер телефона", "Ссылка профиля", "Город", "Регион"
@@ -147,6 +151,11 @@ class ParserScreen(Screen):
                     })
             
             self.query_one("#log-output", RichLog).write(f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/] [green]Файл сохранен по пути [cyan]{filename}[/cyan][/green]")
+        elif event.button.id == "proceed":
+            self.proceed = True
+            self.query_one('#proceed').remove()
+            self.query_one("#proceed-question").remove()
+            self.start_paring(None)
 
 
     def on_key(self, event):

@@ -3,11 +3,13 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 import time
+import json
 from pathlib import Path
 import platform
+from core.paths import ROOT_DIR
 
 BASE_URL = 'https://www.olx.ua'
 LISTING_GRID = '[data-testid="listing-grid"]'
@@ -26,8 +28,8 @@ PAGINATION_ITEMS = 'li[data-testid="pagination-list-item"]'
 AUTH_CHECK = '[data-testid="qa-user-dropdown"]'
 CAPTCHA_ROOT = 'iframe[title="reCAPTCHA"], div[id*="captcha"], [data-testid*="captcha"]'
 SPAM_ALERT = 'p[class="css-rdovvl"][role="alert"]'
-SPAM_MESSAGE = 'Неможливо продовжити, оскільки ми виявили підозрілу активність'
-SPAM_MESSAGE2 = 'Suspicious activity'
+# SPAM_MESSAGE = 'Неможливо продовжити, оскільки ми виявили підозрілу активність'
+# SPAM_MESSAGE2 = 'Suspicious activity'
 
 PAGINATION_NEXT = 'a[data-testid="pagination-forward"][data-cy="pagination-forward"]'
 
@@ -43,7 +45,8 @@ class ParserState:
 class Parser:
     def __init__(self, app):
         self.main_app = app
-        self.state = ParserState()
+        self.load_state()
+        # self.state = ParserState()
         self._running = False
         self.options = Options()
         # self.options.add_argument("--headless=new")
@@ -58,8 +61,9 @@ class Parser:
         self.options.add_argument(f"--user-data-dir={profiles_path}")
 
 
-    def start(self, url, log_output: callable, add_data: callable):
-        self.state.url = url
+    def start(self, url, log_output: callable, add_data: callable, proceed: bool = False):
+        if not proceed or self.state.url is None:
+            self.state.url = url
         self.add_data = add_data
         self.log_output = log_output
         self.profiles = self.main_app.getSetting('profiles').copy()
@@ -80,6 +84,7 @@ class Parser:
             if self.state.page_number != 1:
                 self.fix_url()
             self.driver.get(self.state.url)
+            self.driver.maximize_window()
 
             if not self.is_auth():
                 self.log_output(f"Текущий профиль {profile} не авторизован", 0)
@@ -120,6 +125,8 @@ class Parser:
                 self.state.page_number += 1
                 self.state.card_index = 0
                 time.sleep(5)
+
+        self.save_state()
 
 
     def process_cards(self, cards):
@@ -332,6 +339,7 @@ class Parser:
         self.options.arguments.clear()
         for arg in args:
             self.options.add_argument(arg)
+        self.save_state()
 
 
     def close(self):
@@ -341,6 +349,19 @@ class Parser:
         if self.driver:
             self.driver.quit()
         self.options = Options()
+        self.save_state()
+
+
+    def load_state(self):
+        if not (ROOT_DIR / 'state.json').exists():
+            self.state = ParserState()
+        else:
+            data = json.loads((ROOT_DIR / 'state.json').read_text())
+            self.state = ParserState(**data)
+            
+
+    def save_state(self):
+        (ROOT_DIR / 'state.json').write_text(json.dumps(asdict(self.state)))
 
 
     def fix_url(self):

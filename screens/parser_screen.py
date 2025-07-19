@@ -7,6 +7,7 @@ import datetime
 import csv
 import tzlocal
 import pyperclip
+import asyncio
 
 from core.paths import RESULTS, ROOT_DIR
 
@@ -114,9 +115,11 @@ class ParserScreen(Screen):
     def _parser_task(self, url):
         self.parser.start(url, self.add_log_output, self.add_data, self.proceed)
 
-    
+
     def add_data(self, data: dict) -> None:
         self.data.append(data)
+        if len(self.data) % 20:
+            self.save_data()
 
     
     def add_log_output(self, text: str, log_type: int = 1):
@@ -134,28 +137,32 @@ class ParserScreen(Screen):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == 'export-button':
-            if not RESULTS.exists():
-                RESULTS.mkdir(parents=True, exist_ok=True)
-
-            filename = RESULTS / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
-            with open(filename, 'w', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=[
-                    "Имя продавца", "Номер телефона", "Ссылка профиля", "Город", "Регион"
-                ])
-                writer.writeheader()
-                for user_data in self.data:
-                    writer.writerow({
-                        "Имя продавца": user_data.get('username', ''),
-                        "Номер телефона": user_data.get('phone', ''),
-                        "Ссылка профиля": user_data.get('profile_link', ''),
-                        "Город": user_data.get('city', ''),
-                        "Регион": user_data.get('region', '')
-                    })
-            
-            self.query_one("#log-output", RichLog).write(f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/] [green]Файл сохранен по пути [cyan]{filename}[/cyan][/green]")
+            self.save_data()
         elif event.button.id == "proceed":
             self.proceed = True
             self.start_paring(None)
+
+
+    def save_data(self):
+        if not RESULTS.exists():
+            RESULTS.mkdir(parents=True, exist_ok=True)
+
+        filename = RESULTS / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=[
+                "Имя продавца", "Номер телефона", "Ссылка профиля", "Город", "Регион"
+            ])
+            writer.writeheader()
+            for user_data in self.data:
+                writer.writerow({
+                    "Имя продавца": user_data.get('username', ''),
+                    "Номер телефона": user_data.get('phone', ''),
+                    "Ссылка профиля": user_data.get('profile_link', ''),
+                    "Город": user_data.get('city', ''),
+                    "Регион": user_data.get('region', '')
+                })
+        
+        self.query_one("#log-output", RichLog).write(f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/] [green]Файл сохранен по пути [cyan]{filename}[/cyan][/green]")
 
 
     def on_key(self, event):

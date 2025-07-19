@@ -80,7 +80,7 @@ class ParserScreen(Screen):
         yield Header(show_clock=True)
         if (ROOT_DIR / 'state.json').exists():
             data = (ROOT_DIR / 'state.json').read_text()
-            yield Label("Есть сохраненнные данные, продолжить?", id="proceed-question")
+            yield Label("Есть сохраненнные данные, продолжить? \n{data}", id="proceed-question")
             yield Button("Да", variant="success", id="proceed")
         yield Container(
             Input(
@@ -103,6 +103,8 @@ class ParserScreen(Screen):
         container.query_children('#input-link').remove()
         
         container.mount(Static(f"[bold green]URL:[/bold green] {url}"))
+        self.query_one('#proceed').remove()
+        self.query_one("#proceed-question").remove()
         container.mount(RichLog(id="log-output", markup=True))
         container.mount(Button("Экспорт в CSV", id="export-button"))
         t = Thread(target=self._parser_task, args=(url,), daemon=True)
@@ -153,8 +155,6 @@ class ParserScreen(Screen):
             self.query_one("#log-output", RichLog).write(f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/] [green]Файл сохранен по пути [cyan]{filename}[/cyan][/green]")
         elif event.button.id == "proceed":
             self.proceed = True
-            self.query_one('#proceed').remove()
-            self.query_one("#proceed-question").remove()
             self.start_paring(None)
 
 

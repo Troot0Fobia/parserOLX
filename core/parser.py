@@ -71,9 +71,11 @@ class Parser:
             if len(self.profiles):
                 profile = self.profiles.pop()
             if profile is None:
-                self._running = False
                 self.stop()
-                break
+                self.wait_time()
+                continue
+                # self._running = False
+                # break
 
             self.options.add_argument(f"--profile-directory={profile}")
             self.driver = webdriver.Chrome(options=self.options)
@@ -360,6 +362,9 @@ class Parser:
     def save_state(self):
         (ROOT_DIR / 'state.json').write_text(json.dumps(asdict(self.state)))
 
+    del wait_time(self):
+        time.sleep(30 * 60)
+        self.profiles = self.main_app.getSetting('profiles').copy()
 
     def fix_url(self):
         obj = urlparse(self.state.url)

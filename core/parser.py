@@ -364,7 +364,9 @@ class Parser:
 
 
     def wait_time(self):
-        time.sleep(30 * 60)
+        wait_count = 30 * 60
+        self.log_output(f"Профили закончились, ожидаем {wait_count} минут для повтора...")
+        time.sleep(wait_count)
         self.profiles = self.main_app.getSetting('profiles').copy()
 
 
@@ -372,7 +374,7 @@ class Parser:
         obj = urlparse(self.state.url)
         query_params = parse_qs(obj.query)
         if query_params['page']:
-            self.state.page_number = int(query_params['page'])
+            self.state.page_number = int(query_params['page'][0])
         else:
             query_params['page'] = [str(self.state.page_number)]
             new_query = urlencode(query_params, doseq=True)

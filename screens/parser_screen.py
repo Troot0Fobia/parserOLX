@@ -81,7 +81,7 @@ class ParserScreen(Screen):
         yield Header(show_clock=True)
         if (ROOT_DIR / 'state.json').exists():
             data = (ROOT_DIR / 'state.json').read_text()
-            yield Label("Есть сохраненнные данные, продолжить? \n{data}", id="proceed-question")
+            yield Label(f"Есть сохраненнные данные, продолжить? \n{data}", id="proceed-question")
             yield Button("Да", variant="success", id="proceed")
         yield Container(
             Input(
@@ -118,7 +118,7 @@ class ParserScreen(Screen):
 
     def add_data(self, data: dict) -> None:
         self.data.append(data)
-        if len(self.data) % 20:
+        if len(self.data) % 15:
             self.save_data()
 
     

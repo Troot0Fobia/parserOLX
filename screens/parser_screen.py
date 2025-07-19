@@ -75,6 +75,7 @@ class ParserScreen(Screen):
         self.parser = Parser(self.app)
         self.data = []
         self.proceed = False
+        self.results_folder = RESULTS
 
 
     def compose(self):
@@ -100,6 +101,9 @@ class ParserScreen(Screen):
 
 
     def start_paring(self, url):
+        folder_name = str(datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S"))
+        self.results_folder = RESULTS / folder_name
+        self.results_folder.mkdir(parents=True, exist_ok=True)
         container = self.query_one("#main-container", Container)
         container.query_children('#input-link').remove()
         
@@ -118,7 +122,7 @@ class ParserScreen(Screen):
 
     def add_data(self, data: dict) -> None:
         self.data.append(data)
-        if len(self.data) % 15:
+        if len(self.data) % 15 == 0:
             self.save_data()
 
     
@@ -144,10 +148,10 @@ class ParserScreen(Screen):
 
 
     def save_data(self):
-        if not RESULTS.exists():
-            RESULTS.mkdir(parents=True, exist_ok=True)
+        # if not RESULTS.exists():
+        #     RESULTS.mkdir(parents=True, exist_ok=True)
 
-        filename = RESULTS / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
+        filename = self.results_folder / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
         with open(filename, 'w', newline='', encoding='utf-8') as file:
             writer = csv.DictWriter(file, fieldnames=[
                 "Имя продавца", "Номер телефона", "Ссылка профиля", "Город", "Регион"

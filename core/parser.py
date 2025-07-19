@@ -43,7 +43,6 @@ class ParserState:
 class Parser:
     def __init__(self, app):
         self.main_app = app
-        self.load_state()
         self._running = False
         self.options = Options()
         self.options.add_argument("--disable-blink-features=AutomationControlled")
@@ -58,8 +57,10 @@ class Parser:
 
 
     def start(self, url, log_output: callable, add_data: callable, proceed: bool = False):
-        if not proceed or self.state.url is None:
+        if not proceed or self.state.url is not None:
             self.state.url = url
+        else:
+            self.load_state()
         self.add_data = add_data
         self.log_output = log_output
         self.profiles = self.main_app.getSetting('profiles').copy()
@@ -102,7 +103,7 @@ class Parser:
 
                 listing_grid = self.get_listing_grid()
                 if listing_grid is None:
-                    self.stop()
+                    self.close()
                     break
 
                 cards = self.get_cards(listing_grid)
@@ -110,7 +111,7 @@ class Parser:
                     self.process_cards(cards)
                 except ValueError as e:
                     self.log_output(f"Пойман спам блок для профиля: {profile}: {e}", 0)
-                    print(f"Catched spam block for profile: {profile}: {e}")
+                    # print(f"Catched spam block for profile: {profile}: {e}")
                     self.stop()
                     break
                 
@@ -122,9 +123,8 @@ class Parser:
                 self.next_page_button.click()
                 self.state.page_number += 1
                 self.state.card_index = 0
+                self.save_state()
                 time.sleep(5)
-
-        self.save_state()
 
 
     def process_cards(self, cards):
@@ -365,7 +365,7 @@ class Parser:
 
     def wait_time(self):
         wait_count = 30 * 60
-        self.log_output(f"Профили закончились, ожидаем {wait_count} минут для повтора...")
+        self.log_output(f"Профили закончились, ожидаем {wait_count / 60} минут для повтора...")
         time.sleep(wait_count)
         self.profiles = self.main_app.getSetting('profiles').copy()
 
@@ -373,7 +373,7 @@ class Parser:
     def fix_url(self):
         obj = urlparse(self.state.url)
         query_params = parse_qs(obj.query)
-        if query_params['page']:
+        if query_params['page'] and int(query_params['page'][0]) > self.state.page_number:
             self.state.page_number = int(query_params['page'][0])
         else:
             query_params['page'] = [str(self.state.page_number)]

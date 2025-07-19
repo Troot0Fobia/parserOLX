@@ -362,9 +362,11 @@ class Parser:
     def save_state(self):
         (ROOT_DIR / 'state.json').write_text(json.dumps(asdict(self.state)))
 
-    del wait_time(self):
+
+    def wait_time(self):
         time.sleep(30 * 60)
         self.profiles = self.main_app.getSetting('profiles').copy()
+
 
     def fix_url(self):
         obj = urlparse(self.state.url)

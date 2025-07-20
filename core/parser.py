@@ -374,7 +374,7 @@ class Parser:
     def fix_url(self):
         obj = urlparse(self.state.url)
         query_params = parse_qs(obj.query)
-        if query_params['page'] and int(query_params['page'][0]) > self.state.page_number:
+        if query_params.get('page', None) and int(query_params['page'][0]) > self.state.page_number:
             self.state.page_number = int(query_params['page'][0])
         else:
             query_params['page'] = [str(self.state.page_number)]

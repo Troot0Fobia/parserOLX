@@ -159,7 +159,7 @@ class Parser:
                 raise e
             
             try:
-                phone_button = self.click_show_phone()
+                phone_button = self.find_show_phone()
                 if phone_button is None:
                     raise ValueError("Button was not found")
 

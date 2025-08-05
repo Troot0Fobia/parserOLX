@@ -10,6 +10,9 @@ import json
 from pathlib import Path
 import platform
 from core.paths import ROOT_DIR
+import re
+import pyautogui
+import random
 
 BASE_URL = 'https://www.olx.ua'
 LISTING_GRID = '[data-testid="listing-grid"]'
@@ -154,17 +157,46 @@ class Parser:
                 self.open_in_new_tab(link)
             except ValueError as e:
                 raise e
-
+            
             try:
-                self.click_show_phone()
-                time.sleep(5)
-                if self.is_captcha() or self.is_spam():
+                phone_button = self.click_show_phone()
+                if phone_button is None:
+                    raise ValueError("Button was not found")
+
+                time.sleep(2)
+                phone_button.click()
+                time.sleep(3)
+
+                
+                if self.is_captcha():
+                    raise ValueError("Profile catched captcha. Switching...")
+
+                is_spam = self.is_spam()
+                if is_spam is None:
+                    self.driver.execute_script("window.scrollBy(0, 300);")
+                    button_location = phone_button.location
+                    button_size = phone_button.size
+
+                    center_x = button_location['x'] + button_size['width'] / 2
+                    center_y = button_location['y'] + button_size['height'] / 2
+
+                    window_position = self.driver.get_window_position()
+                    window_x, window_y = window_position['x'], window_position['y']
+
+                    absolute_x = window_x + center_x + random.uniform(0.3, 4.7)
+                    absolute_y = window_y + center_y + random.uniform(0.3, 4.7) + 85
+
+                    pyautogui.moveTo(absolute_x, absolute_y, duration=random.uniform(0.3, 0.7))
+                    time.sleep(1)
+                    pyautogui.click()
+                    time.sleep(1)
+                elif is_spam:
                     raise ValueError("Profile catched spam block. Switching...")
+
                 phone: str = self.get_phone()
                 if phone:
-                    phone = phone.replace(' ', '')
-                    phone = phone.lstrip('+')
-                    phone = phone.lstrip('0')
+                    phone = re.sub(r'\D', '', phone)
+                    phone = re.sub(r'^0', '', phone)
                     if not phone.startswith('380'):
                         phone = '380' + phone
                 user_name = self.get_user_name()
@@ -206,6 +238,8 @@ class Parser:
     def is_spam(self):
         try:
             spam_alert = self.driver.find_element(By.CSS_SELECTOR, SPAM_ALERT)
+            if "activity" in spam_alert:
+                return None
             if spam_alert:
                 return True
         except Exception:
@@ -224,15 +258,14 @@ class Parser:
         self.driver.switch_to.window(self.driver.window_handles[0])
 
 
-    def click_show_phone(self, timeout=DEFAULT_TIMEOUT):
+    def find_show_phone(self, timeout=DEFAULT_TIMEOUT):
         try:
             btn = WebDriverWait(self.driver, timeout).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, BTN_SHOW_PHONE))
             )
-            btn.click()
-            return True
+            return btn
         except Exception:
-            return False
+            return None
 
 
     def get_phone(self, timeout=DEFAULT_TIMEOUT):

@@ -134,91 +134,99 @@ class Parser:
     def process_cards(self, cards):
         start_idx = self.state.card_index
         for idx, card in enumerate(cards):
-            if idx < start_idx:
-                continue
-            
-            if self.is_promo_card(card):
-                continue
-
-            if card.get_attribute('data-cy') != 'l-card' or card.get_attribute('data-testid') != 'l-card':
-                continue
-
-            link = None
             try:
-                link_el = card.find_element(By.TAG_NAME, 'a')
-                link = link_el.get_attribute('href')
-            except Exception:
-                continue
+                if idx < start_idx:
+                    continue
+                
+                if self.is_promo_card(card):
+                    continue
 
-            if not link:
-                continue
-            
-            try:
-                self.open_in_new_tab(link)
+                if card.get_attribute('data-cy') != 'l-card' or card.get_attribute('data-testid') != 'l-card':
+                    continue
+
+                link = None
+                try:
+                    link_el = card.find_element(By.TAG_NAME, 'a')
+                    link = link_el.get_attribute('href')
+                except Exception:
+                    continue
+
+                if not link:
+                    continue
+                
+                try:
+                    self.open_in_new_tab(link)
+                except ValueError as e:
+                    raise e
+                
+                try:
+                    phone_button = self.find_show_phone()
+                    if phone_button is None:
+                        continue
+
+                    time.sleep(2)
+                    try:
+                        phone_button.click()
+                    except:
+                        continue
+                    time.sleep(3)
+
+                    
+                    if self.is_captcha():
+                        raise ValueError("Profile catched captcha. Switching...")
+
+                    is_spam = self.is_spam()
+                    if is_spam is None:
+                        self.driver.execute_script("window.scrollBy(0, 300);")
+                        button_location = phone_button.location
+                        button_size = phone_button.size
+
+                        center_x = button_location['x'] + button_size['width'] / 2
+                        center_y = button_location['y'] + button_size['height'] / 2
+
+                        window_position = self.driver.get_window_position()
+                        window_x, window_y = window_position['x'], window_position['y']
+
+                        absolute_x = window_x + center_x + random.uniform(0.3, 4.7)
+                        absolute_y = window_y + center_y + random.uniform(0.3, 4.7) + 85
+
+                        pyautogui.moveTo(absolute_x, absolute_y, duration=random.uniform(0.3, 0.7))
+                        time.sleep(1)
+                        pyautogui.click()
+                        time.sleep(1)
+                    elif is_spam:
+                        raise ValueError("Profile catched spam block. Switching...")
+
+                    phone: str = self.get_phone()
+                    if phone:
+                        phone = re.sub(r'\D', '', phone)
+                        phone = re.sub(r'^0', '', phone)
+                        if not phone.startswith('380'):
+                            phone = '380' + phone
+                    user_name = self.get_user_name()
+                    profile_link = self.get_user_profile_link()
+                    city, region = self.get_location()
+                    self.log_output(f"Получены данные продавца: Номер телефона: [cyan]{phone}[/cyan], Имя продавца: [cyan]{user_name}[/cyan], Ссылка профиля: [cyan]{profile_link}[/cyan], Местоположение: [cyan]{city}, {region}[/cyan]")
+                    print(f"""
+                        Получены данные продавца: Номер телефона: {phone}, Имя продавца: {user_name}, Ссылка профиля: {profile_link}, Местоположение: {city}, {region}
+                    """)
+                    self.add_data({
+                        "username": user_name,
+                        "phone": phone,
+                        "profile_link": profile_link,
+                        "city": city,
+                        "region": region
+                    })
+                finally:
+                    self.close_current_tab()
+
+                self.state.card_index += 1
+                time.sleep(5)
             except ValueError as e:
                 raise e
-            
-            try:
-                phone_button = self.find_show_phone()
-                if phone_button is None:
-                    raise ValueError("Button was not found")
-
-                time.sleep(2)
-                phone_button.click()
-                time.sleep(3)
-
-                
-                if self.is_captcha():
-                    raise ValueError("Profile catched captcha. Switching...")
-
-                is_spam = self.is_spam()
-                if is_spam is None:
-                    self.driver.execute_script("window.scrollBy(0, 300);")
-                    button_location = phone_button.location
-                    button_size = phone_button.size
-
-                    center_x = button_location['x'] + button_size['width'] / 2
-                    center_y = button_location['y'] + button_size['height'] / 2
-
-                    window_position = self.driver.get_window_position()
-                    window_x, window_y = window_position['x'], window_position['y']
-
-                    absolute_x = window_x + center_x + random.uniform(0.3, 4.7)
-                    absolute_y = window_y + center_y + random.uniform(0.3, 4.7) + 85
-
-                    pyautogui.moveTo(absolute_x, absolute_y, duration=random.uniform(0.3, 0.7))
-                    time.sleep(1)
-                    pyautogui.click()
-                    time.sleep(1)
-                elif is_spam:
-                    raise ValueError("Profile catched spam block. Switching...")
-
-                phone: str = self.get_phone()
-                if phone:
-                    phone = re.sub(r'\D', '', phone)
-                    phone = re.sub(r'^0', '', phone)
-                    if not phone.startswith('380'):
-                        phone = '380' + phone
-                user_name = self.get_user_name()
-                profile_link = self.get_user_profile_link()
-                city, region = self.get_location()
-                self.log_output(f"Получены данные продавца: Номер телефона: [cyan]{phone}[/cyan], Имя продавца: [cyan]{user_name}[/cyan], Ссылка профиля: [cyan]{profile_link}[/cyan], Местоположение: [cyan]{city}, {region}[/cyan]")
-                print(f"""
-                    Получены данные продавца: Номер телефона: {phone}, Имя продавца: {user_name}, Ссылка профиля: {profile_link}, Местоположение: {city}, {region}
-                """)
-                self.add_data({
-                    "username": user_name,
-                    "phone": phone,
-                    "profile_link": profile_link,
-                    "city": city,
-                    "region": region
-                })
-            finally:
-                self.close_current_tab()
-
-            self.state.card_index += 1
-            time.sleep(5)
-
+            except Exception as e:
+                self.log_output(f"Возникла ошибка: {e}", 1)
+                    
 
     def is_promo_card(self, card) -> bool:
         try:

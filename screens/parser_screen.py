@@ -1,5 +1,6 @@
 import csv
 import datetime
+import json
 from threading import Thread
 
 import pyperclip
@@ -153,7 +154,11 @@ class ParserScreen(Screen):
             self.save_data()
         elif event.button.id == "proceed":
             self.proceed = True
-            self.start_paring(None)
+            data = json.loads((ROOT_DIR / "state.json").read_text())
+            if data:
+                self.start_paring(data["url"])
+            else:
+                self.start_paring(None)
 
     def save_data(self):
         if not RESULTS.exists():

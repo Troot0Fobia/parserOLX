@@ -41,7 +41,7 @@ DEFAULT_TIMEOUT = 10
 
 @dataclass
 class ParserState:
-    url: str = None
+    url: str = ""
     page_number: int = 1
     card_index: int = 0
 

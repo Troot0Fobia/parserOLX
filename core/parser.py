@@ -93,6 +93,7 @@ class Parser:
             self.driver = webdriver.Chrome(options=self.options)
             # if self.state.page_number != 1:
             self.fix_url()
+            self.log_output(f"Url before receiving content: {self.state.url}")
             self.driver.get(self.state.url)
             self.driver.maximize_window()
 
@@ -130,10 +131,10 @@ class Parser:
                     self.stop()
                     break
 
-                self.next_page_button.click()
                 self.state.page_number += 1
                 self.state.card_index = 0
                 self.save_state()
+                self.next_page_button.click()
                 time.sleep(5)
 
     def process_cards(self, cards):
@@ -247,14 +248,18 @@ class Parser:
             card.find_element(By.CSS_SELECTOR, CARD_PROMO_SKIP_INNER)
             return True
         except Exception:
-            return False
+            pass
+
+        return False
 
     def is_captcha(self):
         try:
             self.driver.find_element(By.CSS_SELECTOR, CAPTCHA_ROOT)
             return True
         except Exception:
-            return False
+            pass
+
+        return False
 
     def is_spam(self):
         try:
@@ -281,9 +286,12 @@ class Parser:
             btn = WebDriverWait(self.driver, timeout).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, BTN_SHOW_PHONE))
             )
-            return btn
+            if btn:
+                return btn
         except Exception:
-            return None
+            pass
+
+        return None
 
     def get_phone(self, timeout=DEFAULT_TIMEOUT):
         try:
@@ -292,13 +300,17 @@ class Parser:
             )
             return el.text.strip()
         except Exception:
-            return ""
+            pass
+
+        return ""
 
     def get_user_name(self):
         try:
             return self.driver.find_element(By.CSS_SELECTOR, USER_NAME).text.strip()
         except Exception:
-            return None
+            pass
+
+        return None
 
     def get_user_profile_link(self):
         try:
@@ -306,7 +318,9 @@ class Parser:
             href = el.get_attribute("href") or ""
             return urljoin(BASE_URL, href)
         except Exception:
-            return None
+            pass
+
+        return None
 
     def get_location(self):
         try:
@@ -326,6 +340,7 @@ class Parser:
                 region = region.strip()
         except Exception:
             pass
+
         return city, region
 
     def is_auth(self):
@@ -335,7 +350,9 @@ class Parser:
             self.driver.find_element(By.CSS_SELECTOR, AUTH_CHECK)
             return True
         except Exception:
-            return False
+            pass
+
+        return False
 
     def get_total_pages(self):
         try:
@@ -351,27 +368,36 @@ class Parser:
             return max(items)
 
         except Exception:
-            return 1
+            pass
+
+        return 1
 
     def get_next_page_button(self):
         try:
             wrapper = self.driver.find_element(By.CSS_SELECTOR, PAGINATION_WRAPPER)
-            next_btn = wrapper.find_element(By.CSS_SELECTOR, PAGINATION_NEXT)
-            return next_btn
+            if wrapper:
+                next_btn = wrapper.find_element(By.CSS_SELECTOR, PAGINATION_NEXT)
+                return next_btn
         except Exception:
-            return None
+            pass
+
+        return None
 
     def get_listing_grid(self):
         try:
             return self.driver.find_element(By.CSS_SELECTOR, LISTING_GRID)
         except Exception:
-            return None
+            pass
+
+        return None
 
     def get_cards(self, grid):
         try:
             return self.driver.find_elements(By.CSS_SELECTOR, CARD_SEL)
         except Exception:
-            return None
+            pass
+
+        return None
 
     def stop(self):
         if self.driver:
@@ -425,3 +451,4 @@ class Parser:
             query_params["page"] = [str(self.state.page_number)]
             new_query = urlencode(query_params, doseq=True)
             self.state.url = urlunparse(obj._replace(query=new_query))
+

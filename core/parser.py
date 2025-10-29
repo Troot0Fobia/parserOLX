@@ -1,13 +1,11 @@
 import json
 import platform
-import random
 import re
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
-import pyautogui
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -68,14 +66,18 @@ class Parser:
     def start(
         self, url, log_output: callable, add_data: callable, proceed: bool = False
     ):
-        if not proceed or self.state.url is not None:
+        if proceed:
+            self.load_state()
+        elif url:
             self.state.url = url
         else:
-            self.load_state()
+            return
+
         self.add_data = add_data
         self.log_output = log_output
+        self.log_output(f"Loaded data: {self.state}")
         self.profiles = self.main_app.getSetting("profiles").copy()
-        self.log_output(f"Активные профили: {self.profiles}", 1)
+        self.log_output(f"Активные профили: {self.profiles}")
         self._running = True
 
         while self._running:
@@ -91,7 +93,6 @@ class Parser:
             self.options.add_argument(f"--profile-directory={profile}")
             self.driver = webdriver.Chrome(options=self.options)
             self.fix_url()
-            self.log_output(f"Url before receiving content: {self.state.url}")
             self.driver.get(self.state.url)
             self.driver.maximize_window()
 
@@ -117,8 +118,18 @@ class Parser:
                     break
 
                 cards = self.get_cards(listing_grid)
+                if not cards:
+                    self.close()
+                    break
+
+                clean_cards = []
+                for _, card in enumerate(cards):
+                    if self.is_promo_card(card):
+                        continue
+                    clean_cards.append(card)
+
                 try:
-                    self.process_cards(cards)
+                    self.process_cards(clean_cards)
                 except ValueError as e:
                     self.log_output(f"Пойман спам блок для профиля: {profile}: {e}", 0)
                     self.stop()
@@ -129,8 +140,10 @@ class Parser:
                     self.stop()
                     break
 
-                self.state.page_number += 1
-                self.state.card_index = 0
+                if self.state.card_index + 1 >= len(clean_cards):
+                    self.state.page_number += 1
+                    self.state.card_index = 0
+
                 self.save_state()
                 self.next_page_button.click()
                 time.sleep(5)

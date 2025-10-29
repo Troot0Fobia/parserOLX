@@ -97,6 +97,8 @@ class ParserScreen(Screen):
 
     def on_input_submitted(self, event: Input.Submitted):
         url = event.value
+        if not url:
+            return
         self.start_paring(url)
 
     def start_paring(self, url):

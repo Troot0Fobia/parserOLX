@@ -82,16 +82,14 @@ class Parser:
             profile = None
             if len(self.profiles):
                 profile = self.profiles.pop()
+
             if profile is None:
                 self.stop()
                 self.wait_time()
                 continue
-                # self._running = False
-                # break
 
             self.options.add_argument(f"--profile-directory={profile}")
             self.driver = webdriver.Chrome(options=self.options)
-            # if self.state.page_number != 1:
             self.fix_url()
             self.log_output(f"Url before receiving content: {self.state.url}")
             self.driver.get(self.state.url)
@@ -183,28 +181,7 @@ class Parser:
                     if self.is_captcha():
                         raise ValueError("Profile catched captcha. Switching...")
 
-                    is_spam = self.is_spam()
-                    if is_spam is None:
-                        self.driver.execute_script("window.scrollBy(0, 300);")
-                        button_location = phone_button.location
-                        button_size = phone_button.size
-
-                        center_x = button_location["x"] + button_size["width"] / 2
-                        center_y = button_location["y"] + button_size["height"] / 2
-
-                        window_position = self.driver.get_window_position()
-                        window_x, window_y = window_position["x"], window_position["y"]
-
-                        absolute_x = window_x + center_x + random.uniform(0.3, 4.7)
-                        absolute_y = window_y + center_y + random.uniform(0.3, 4.7) + 85
-
-                        pyautogui.moveTo(
-                            absolute_x, absolute_y, duration=random.uniform(0.3, 0.7)
-                        )
-                        time.sleep(1)
-                        pyautogui.click()
-                        time.sleep(1)
-                    elif is_spam:
+                    if self.is_spam():
                         raise ValueError("Profile catched spam block. Switching...")
 
                     phone: str = self.get_phone()
@@ -237,6 +214,7 @@ class Parser:
                     self.close_current_tab()
 
                 self.state.card_index += 1
+                self.save_state()
                 time.sleep(5)
             except ValueError as e:
                 raise e
@@ -264,8 +242,6 @@ class Parser:
     def is_spam(self):
         try:
             spam_alert = self.driver.find_element(By.CSS_SELECTOR, SPAM_ALERT)
-            if "activity" in spam_alert:
-                return None
             if spam_alert:
                 return True
         except Exception:

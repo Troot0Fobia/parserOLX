@@ -1,11 +1,11 @@
-from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Checkbox, Button, Static
-from textual.containers import VerticalScroll, Vertical, Horizontal
-from textual.app import ComposeResult
-from rich.rule import Rule
-
-from pathlib import Path
 import platform
+from pathlib import Path
+
+from rich.rule import Rule
+from textual.app import ComposeResult
+from textual.containers import Horizontal, VerticalScroll
+from textual.screen import ModalScreen
+from textual.widgets import Button, Checkbox, Footer, Header, Static
 
 
 class ProfilesScreen(ModalScreen):
@@ -30,47 +30,51 @@ class ProfilesScreen(ModalScreen):
     def __init__(self):
         super().__init__()
         self.profile_checkboxes = []
-        self.active_profiles = self.app.getSetting('profiles')
+        self.active_profiles = self.app.getSetting("profiles")
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Static(Rule("Профили Chrome"), shrink=True)
-        
+
         with VerticalScroll(id="profile-scroll"):
             for profile, path in self.get_chrome_profiles().items():
-                cb = Checkbox(profile, value=True if profile in self.active_profiles else False, name=str(path), classes="checkbox")
+                cb = Checkbox(
+                    profile,
+                    value=True if profile in self.active_profiles else False,
+                    name=str(path),
+                    classes="checkbox",
+                )
                 self.profile_checkboxes.append(cb)
                 yield cb
 
         with Horizontal(id="buttons"):
             yield Button("Сохранить", id="save", variant="success")
             yield Button("Отмена", id="cancel", variant="error")
-        
-        yield Footer()
 
+        yield Footer()
 
     def on_mount(self):
         if self.profile_checkboxes:
             self.profile_checkboxes[0].focus()
 
-
     def on_key(self, event):
-        if event.key in ('escape', 'q'):
+        if event.key in ("escape", "q"):
             self.app.pop_screen()
             return
-        
+
         focused = self.focused
-        if event.key in ('down', 'up'):
-            widgets = self.profile_checkboxes + [self.query_one("#save"), self.query_one("#cancel")]
+        if event.key in ("down", "up"):
+            widgets = self.profile_checkboxes + [
+                self.query_one("#save"),
+                self.query_one("#cancel"),
+            ]
             if focused in widgets:
                 idx = widgets.index(focused)
-                if event.key == 'down':
+                if event.key == "down":
                     idx = (idx + 1) % len(widgets)
-                elif event.key == 'up':
+                elif event.key == "up":
                     idx = (idx - 1) % len(widgets)
                 self.set_focus(widgets[idx])
-
-
 
     def get_chrome_profiles(self):
         system = platform.system()
@@ -79,9 +83,11 @@ class ProfilesScreen(ModalScreen):
         profiles = {}
 
         if system == "Linux":
-            profiles_path = home_dir / '.config' / 'chromium'
+            profiles_path = home_dir / ".config" / "chromium"
         elif system == "Windows":
-            profiles_path = Path('C:/') / '1' / 'GoogleChromePortable' / 'Data' / 'profile'
+            profiles_path = (
+                Path("C:/") / "1" / "GoogleChromePortable" / "Data" / "profile"
+            )
         else:
             return {}
 
@@ -97,7 +103,6 @@ class ProfilesScreen(ModalScreen):
 
         return dict(sorted(profiles.items()))
 
-
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "cancel":
             self.app.pop_screen()
@@ -108,5 +113,6 @@ class ProfilesScreen(ModalScreen):
                 if cb.value
             }
             print(f"Chosen profiles: {selected_profiles}")
-            self.app.changeSettings('profiles', list(selected_profiles.keys()))
+            self.app.changeSettings("profiles", list(selected_profiles.keys()))
             self.app.pop_screen()
+

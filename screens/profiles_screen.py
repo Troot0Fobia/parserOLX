@@ -1,4 +1,3 @@
-import platform
 from pathlib import Path
 
 from rich.rule import Rule
@@ -6,6 +5,8 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Footer, Header, Static
+
+from core.paths import get_chrome_profiles_path
 
 
 class ProfilesScreen(ModalScreen):
@@ -77,23 +78,11 @@ class ProfilesScreen(ModalScreen):
                 self.set_focus(widgets[idx])
 
     def get_chrome_profiles(self):
-        system = platform.system()
-        home_dir = Path.home()
-        profiles_path = None
+        profiles_path = get_chrome_profiles_path()
+        if not profiles_path:
+            return {}
+
         profiles = {}
-
-        if system == "Linux":
-            profiles_path = home_dir / ".config" / "chromium"
-        elif system == "Windows":
-            profiles_path = (
-                Path("C:/") / "1" / "GoogleChromePortable" / "Data" / "profile"
-            )
-        else:
-            return {}
-
-        if not profiles_path.exists():
-            return {}
-
         for folder in profiles_path.iterdir():
             if folder.is_dir():
                 for root_folder, _, files in folder.walk():

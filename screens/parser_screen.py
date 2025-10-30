@@ -71,7 +71,7 @@ class ParserScreen(Screen):
 
     def __init__(self):
         super().__init__()
-        self.parser = Parser(self.app)
+        self.parser = None
         self.data = []
         self.proceed = False
         self.results_folder = RESULTS
@@ -81,7 +81,8 @@ class ParserScreen(Screen):
         if (ROOT_DIR / "state.json").exists():
             data = (ROOT_DIR / "state.json").read_text()
             yield Label(
-                f"Есть сохраненнные данные, продолжить? \n{data}", id="proceed-question"
+                f"Есть сохраненнные данные, продолжить? \n{data}",
+                id="proceed-question",
             )
             yield Button("Да", variant="success", id="proceed")
         yield Container(
@@ -115,24 +116,30 @@ class ParserScreen(Screen):
         container.mount(Static(f"[bold green]URL:[/bold green] {url}"))
 
         try:
-            proceed_btn = self.query_one("#proceed")
-            proceed_btn.remove()
+            self.query_one("#proceed").remove()
         except Exception:
             pass
 
         try:
-            proceed_question_btn = self.query_one("#proceed-question")
-            proceed_question_btn.remove()
+            self.query_one("#proceed-question").remove()
         except Exception:
             pass
 
         container.mount(RichLog(id="log-output", markup=True))
         container.mount(Button("Экспорт в CSV", id="export-button"))
+
+        try:
+            self.parser = Parser(self.app, self.add_log_output, self.add_data)
+        except Exception as e:
+            self.add_log_output(f"Ошибка во время инициализации парсера: {e}", 0)
+            return
+
         t = Thread(target=self._parser_task, args=(url,), daemon=True)
         t.start()
 
     def _parser_task(self, url):
-        self.parser.start(url, self.add_log_output, self.add_data, self.proceed)
+        if self.parser:
+            self.parser.start(url, self.proceed)
 
     def add_data(self, data: dict) -> None:
         self.data.append(data)
@@ -207,14 +214,18 @@ class ParserScreen(Screen):
             except Exception:
                 pass
 
-        if event.key == "escape" and self.parser._running:
+        if event.key == "escape":
+            if self.parser and self.parser._running:
 
-            def check_quit(finish: bool | None) -> None:
-                if finish:
-                    self.parser.close()
-                    self.log_ended()
+                def check_quit(finish: bool | None) -> None:
+                    if finish and self.parser:
+                        self.parser.close()
+                        self.log_ended()
 
-            self.app.push_screen(StopParsingScreen(), check_quit)
+                self.app.push_screen(StopParsingScreen(), check_quit)
+            else:
+                self.app.pop_screen()
         elif event.key == "q":
-            self.parser.close()
+            if self.parser:
+                self.parser.close()
             self.app.pop_screen()

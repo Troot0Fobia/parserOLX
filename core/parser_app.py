@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from textual.app import App
 
@@ -12,16 +13,20 @@ class ParserApp(App):
         super().__init__()
         self.settings = json.loads((ROOT_DIR / "settings.json").read_text())
 
-    def on_mount(self):
+    def on_mount(self) -> None:
         self.push_screen(MainMenu())
 
-    def closeApp(self):
-        with open(ROOT_DIR / "settings.json", "w") as f:
-            json.dump(self.settings, f)
+    def closeApp(self) -> None:
+        self.saveSettings()
 
-    def getSetting(self, key):
+    def getSetting(self, key: str) -> Any:
         return self.settings.get(key, None)
 
-    def changeSettings(self, key, value):
+    def changeSettings(self, key: str, value: Any) -> None:
         self.settings[key] = value
+        self.saveSettings()
+
+    def saveSettings(self) -> None:
+        with open(ROOT_DIR / "settings.json", "w") as f:
+            json.dump(self.settings, f)
 

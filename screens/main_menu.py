@@ -40,6 +40,6 @@ class MainMenu(Screen):
         elif selected_id == "start_parsing":
             self.app.push_screen(ParserScreen())
         elif selected_id == "exit":
-            self.call_later(self.app.closeApp)
+            self.app.closeApp()
             self.app.exit()
 

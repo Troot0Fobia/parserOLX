@@ -202,10 +202,11 @@ class ParserScreen(Screen):
 
     def on_key(self, event):
         if event.key == "ctrl+v":
-            text = pyperclip.paste()
-            input_widget = self.query_one("#input-link", Input)
-            if input_widget is not None:
-                input_widget.value = text
+            try:
+                self.query_one("#input-link", Input).value = pyperclip.paste()
+            except Exception:
+                pass
+
         if event.key == "escape" and self.parser._running:
 
             def check_quit(finish: bool | None) -> None:
@@ -214,7 +215,6 @@ class ParserScreen(Screen):
                     self.log_ended()
 
             self.app.push_screen(StopParsingScreen(), check_quit)
-
         elif event.key == "q":
             self.parser.close()
             self.app.pop_screen()

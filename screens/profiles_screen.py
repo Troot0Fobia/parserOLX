@@ -112,7 +112,6 @@ class ProfilesScreen(ModalScreen):
                 for cb in self.profile_checkboxes
                 if cb.value
             }
-            print(f"Chosen profiles: {selected_profiles}")
             self.app.changeSettings("profiles", list(selected_profiles.keys()))
             self.app.pop_screen()
 

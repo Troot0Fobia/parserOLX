@@ -15,7 +15,7 @@ class ParserApp(App):
     def on_mount(self):
         self.push_screen(MainMenu())
 
-    async def closeApp(self):
+    def closeApp(self):
         with open(ROOT_DIR / "settings.json", "w") as f:
             json.dump(self.settings, f)
 

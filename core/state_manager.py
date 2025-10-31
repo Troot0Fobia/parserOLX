@@ -22,3 +22,13 @@ def load_state():
 def save_state(state: ParserState):
     STATE_FILE.write_text(json.dumps(asdict(state), ensure_ascii=True))
 
+
+def is_data_exists() -> dict | None:
+    if not STATE_FILE.exists():
+        return None
+
+    data = json.loads(STATE_FILE.read_text())
+    if data["cards"]:
+        return data
+
+    return None

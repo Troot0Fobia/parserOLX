@@ -15,6 +15,7 @@ from textual.app import App
 
 from core.paths import get_chrome_profiles_path
 from core.state_manager import ParserState, load_state, save_state
+from helpers.humanization import Humanization, ViewportSize
 
 BASE_URL = "https://www.olx.ua"
 BTN_SHOW_PHONE = 'button[data-testid="show-phone"].css-1mems40'
@@ -24,6 +25,9 @@ USER_PROFILE_LINK = 'a[data-testid="user-profile-link"][name="user_ads"]'
 MAP_ASIDE = 'div[data-testid="map-aside-section"]'
 MAP_CITY = ".css-7wnksb"
 MAP_REGION = ".css-z0m36u"
+# .swiper-button-disabled
+NEXT_IMAGE_BUTTON = "button.swiper-button-next"
+PREV_IMAGE_BUTTON = "button.swiper-button-prev"
 
 AUTH_CHECK = '[data-testid="qa-user-dropdown"]'
 CAPTCHA_ROOT = 'iframe[title="reCAPTCHA"], div[id*="captcha"], [data-testid*="captcha"]'
@@ -48,6 +52,8 @@ class Parser:
         self.profile = None
         self.processed_cards = 0
         self.driver = webdriver.Chrome()
+        self.humanization = Humanization()
+        self.viewport_size = ViewportSize()
 
         self.options = Options()
         self.options.add_argument("--disable-blink-features=AutomationControlled")
@@ -93,10 +99,24 @@ class Parser:
                     )
 
                 self.driver.get(card_link)
+                next_button, prev_button = self.get_image_buttons()
+                if next_button and prev_button:
+                    self.humanization.scroll_images(
+                        next_button=next_button, prev_button=prev_button
+                    )
 
                 phone_button = self.find_show_phone()
                 if phone_button is None:
                     continue
+
+                time.sleep(2)
+
+                if self.viewport_size.width and self.viewport_size.height:
+                    self.humanization.human_imitation(
+                        self.driver,
+                        show_phone_button=phone_button,
+                        viewport_size=self.viewport_size,
+                    )
 
                 try:
                     phone_button.click()
@@ -157,6 +177,10 @@ class Parser:
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.get(self.state.url)
         self.driver.maximize_window()
+        self.get_user_viewport_size()
+        self.log_output(f"Current window position: {self.driver.get_window_position()}", 1)
+        self.log_output(f"Current window rect: {self.driver.get_window_rect()}", 1)
+        self.log_output(f"Current window size: {self.driver.get_window_size()}", 1)
 
         if not self.is_auth():
             self.profile = None
@@ -172,6 +196,17 @@ class Parser:
         time.sleep(wait_count)
         self.profiles = self.main_app.getSetting("profiles").copy()
 
+    def get_user_viewport_size(self) -> None:
+        height = self.driver.execute_script(
+            "return document.documentElement.clientHeight;"
+        )
+        width = self.driver.execute_script(
+            "return document.documentElement.clientWidth;"
+        )
+
+        if height and width:
+            self.viewport_size = ViewportSize(width, height)
+
     def refresh_options(self) -> None:
         args = [
             arg
@@ -181,6 +216,16 @@ class Parser:
         self.options.arguments.clear()
         for arg in args:
             self.options.add_argument(arg)
+
+    def get_image_buttons(self) -> tuple[WebElement, WebElement] | tuple[None, None]:
+        try:
+            next_button = self.driver.find_element(By.CSS_SELECTOR, NEXT_IMAGE_BUTTON)
+            prev_button = self.driver.find_element(By.CSS_SELECTOR, PREV_IMAGE_BUTTON)
+            return next_button, prev_button
+        except Exception:
+            pass
+
+        return None, None
 
     def is_captcha(self) -> bool:
         try:
@@ -206,6 +251,14 @@ class Parser:
                 EC.element_to_be_clickable((By.CSS_SELECTOR, BTN_SHOW_PHONE))
             )
             if btn:
+                self.log_output(
+                    f"Displayed: {btn.is_displayed()}, Enabled: {btn.is_enabled()}", 1
+                )
+                self.log_output(f"Rect: {btn.rect}, Location: {btn.location}", 1)
+                self.log_output(
+                    f"Tag: {btn.tag_name}, Class: {btn.get_attribute('class')}", 1
+                )
+                self.log_output(f"Found show phone button: {btn}", 1)
                 return btn
         except Exception:
             pass
@@ -376,4 +429,5 @@ class Parser:
             self.state.url, current_page = self.increase_page(self.state.url)
 
         self.state.cards = list(cards)
+        save_state(self.state)
         self.log_output(f"Получено {len(self.state.cards)} карточек.", 1)

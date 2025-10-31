@@ -11,6 +11,7 @@ from textual.widgets import (Button, Footer, Header, Input, Label, RichLog, Stat
 
 from core.parser import Parser
 from core.paths import RESULTS, ROOT_DIR
+from core.state_manager import is_data_exists
 
 
 class StopParsingScreen(ModalScreen[bool]):
@@ -78,10 +79,13 @@ class ParserScreen(Screen):
 
     def compose(self):
         yield Header(show_clock=True)
-        if (ROOT_DIR / "state.json").exists():
-            data = (ROOT_DIR / "state.json").read_text()
+        if data := is_data_exists():
             yield Label(
-                f"Есть сохраненнные данные, продолжить? \n{data}",
+                (
+                    f"Есть сохраненнные данные, продолжить?\n"
+                    f"Ссылка: {data['url']}\n"
+                    f"Количество карточек: {len(data['cards'])}"
+                ),
                 id="proceed-question",
             )
             yield Button("Да", variant="success", id="proceed")

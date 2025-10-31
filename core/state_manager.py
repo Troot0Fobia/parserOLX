@@ -12,14 +12,14 @@ class ParserState:
     cards: list[str] = field(default_factory=list)
 
 
-def load_state():
+def load_state() -> ParserState:
     if not STATE_FILE.exists():
         return ParserState()
 
     return ParserState(**(json.loads(STATE_FILE.read_text())))
 
 
-def save_state(state: ParserState):
+def save_state(state: ParserState) -> None:
     STATE_FILE.write_text(json.dumps(asdict(state), ensure_ascii=True))
 
 

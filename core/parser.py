@@ -1,4 +1,5 @@
 import re
+import textwrap
 import time
 from collections.abc import Callable
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
@@ -18,20 +19,29 @@ from core.state_manager import ParserState, load_state, save_state
 from helpers.humanization import Humanization, ViewportSize
 
 BASE_URL = "https://www.olx.ua"
+
 BTN_SHOW_PHONE = 'button[data-testid="show-phone"].css-1mems40'
 PHONE_VALUE = 'a[data-testid="contact-phone"]'
 USER_NAME = '[data-testid="user-profile-user-name"]'
 USER_PROFILE_LINK = 'a[data-testid="user-profile-link"][name="user_ads"]'
+
 MAP_ASIDE = 'div[data-testid="map-aside-section"]'
-MAP_CITY = ".css-7wnksb"
-MAP_REGION = ".css-z0m36u"
-# .swiper-button-disabled
+MAP_CITY = ".css-9pna1a"
+MAP_REGION = ".css-3cz5o2"
+
 NEXT_IMAGE_BUTTON = "button.swiper-button-next"
 PREV_IMAGE_BUTTON = "button.swiper-button-prev"
 
 AUTH_CHECK = '[data-testid="qa-user-dropdown"]'
 CAPTCHA_ROOT = 'iframe[title="reCAPTCHA"], div[id*="captcha"], [data-testid*="captcha"]'
 SPAM_ALERT = 'p[class="css-rdovvl"][role="alert"]'
+
+BS_CARD_CLASS = "css-1sw7q4x"
+BS_CARD_DATASET = "l-card"
+BS_CARD_LINK_CLASS = "css-1tqlkj0"
+BS_PAGE_WRAPPER_DATASET = "pagination-list"
+BS_PAGE_WRAPPER_CLASS = "pagination-list"
+BS_PAGE_LINK_CLASS = "css-b6tdh7"
 
 DEFAULT_TIMEOUT = 10
 
@@ -154,13 +164,25 @@ class Parser:
                 )
             except ValueError as e:
                 self.log_output(
-                    f"Возникла ошибка с аккаунтом во время парсинга:\n{e}", 0
+                    (
+                        "Возникла ошибка с аккаунтом во время парсинга:\n"
+                        + textwrap.indent(str(e) or repr(e), " " * 9)
+                    ),
+                    0,
                 )
                 self.state.cards.append(card_link)
                 self.processed_cards -= 1
                 self.profile = None
             except Exception as e:
-                self.log_output(f"Возникла ошибка во время парсинга:\n{e}", 0)
+                self.log_output(
+                    (
+                        "Возникла ошибка во время парсинга:\n"
+                        + textwrap.indent(str(e) or repr(e), " " * 9)
+                    ),
+                    0,
+                )
+                self.state.cards.append(card_link)
+                self.processed_cards -= 1
             finally:
                 self.processed_cards += 1
 
@@ -178,9 +200,6 @@ class Parser:
         self.driver.get(self.state.url)
         self.driver.maximize_window()
         self.get_user_viewport_size()
-        self.log_output(f"Current window position: {self.driver.get_window_position()}", 1)
-        self.log_output(f"Current window rect: {self.driver.get_window_rect()}", 1)
-        self.log_output(f"Current window size: {self.driver.get_window_size()}", 1)
 
         if not self.is_auth():
             self.profile = None
@@ -247,18 +266,9 @@ class Parser:
 
     def find_show_phone(self, timeout: float = DEFAULT_TIMEOUT) -> WebElement | None:
         try:
-            btn = WebDriverWait(self.driver, timeout).until(
+            if btn := WebDriverWait(self.driver, timeout).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, BTN_SHOW_PHONE))
-            )
-            if btn:
-                self.log_output(
-                    f"Displayed: {btn.is_displayed()}, Enabled: {btn.is_enabled()}", 1
-                )
-                self.log_output(f"Rect: {btn.rect}, Location: {btn.location}", 1)
-                self.log_output(
-                    f"Tag: {btn.tag_name}, Class: {btn.get_attribute('class')}", 1
-                )
-                self.log_output(f"Found show phone button: {btn}", 1)
+            ):
                 return btn
         except Exception:
             pass
@@ -310,7 +320,9 @@ class Parser:
         city, region = "", ""
         try:
             city = (
-                aside.find_element(By.CSS_SELECTOR, MAP_CITY).text.strip().rstrip(",")
+                aside.find_element(By.CSS_SELECTOR, MAP_CITY)
+                .text.strip()
+                .replace(",", "")
             )
         except Exception:
             pass
@@ -341,6 +353,7 @@ class Parser:
             return
         self._running = False
         self.stop()
+        self.log_output("Парсер остановлен", 1)
 
     def increase_page(self, url: str) -> tuple[str, int]:
         obj = urlparse(url)
@@ -368,12 +381,15 @@ class Parser:
         try:
             page_wrapper = soup.find(
                 "ul",
-                attrs={"class": "pagination-list", "data-testid": "pagination-list"},
+                attrs={
+                    "class": BS_PAGE_WRAPPER_CLASS,
+                    "data-testid": BS_PAGE_WRAPPER_DATASET,
+                },
             )
             if not page_wrapper:
                 return 1
 
-            page_links = page_wrapper.find_all("a", attrs={"class": "css-b6tdh7"})
+            page_links = page_wrapper.find_all("a", attrs={"class": BS_PAGE_LINK_CLASS})
 
             if not page_links:
                 return 1
@@ -409,14 +425,14 @@ class Parser:
             cards_list = soup.find_all(
                 "div",
                 attrs={
-                    "data-cy": "l-card",
-                    "data-testid": "l-card",
-                    "class": "css-1sw7q4x",
+                    "data-cy": BS_CARD_DATASET,
+                    "data-testid": BS_CARD_DATASET,
+                    "class": BS_CARD_CLASS,
                 },
             )
 
             for card in cards_list:
-                link_tag = card.find("a", class_="css-1tqlkj0")
+                link_tag = card.find("a", class_=BS_CARD_LINK_CLASS)
                 if link_tag and link_tag.has_attr("href"):
                     href = link_tag.get("href", "")
                     if href:
@@ -424,6 +440,7 @@ class Parser:
 
             if max_page == -1:
                 max_page = self.get_max_page_number(soup)
+                self.log_output(f"Всего страниц: {max_page}", 1)
 
             self.log_output(f"Текущая страница: {current_page}", 1)
             self.state.url, current_page = self.increase_page(self.state.url)

@@ -23,7 +23,7 @@ class Humanization:
             return False
 
         while True:
-            if random.uniform(0, 1) < 0.8:
+            if random.uniform(0, 1) < 0.85:
                 if not buttonDisabled(next_button):
                     next_button.click()
                 else:
@@ -32,7 +32,7 @@ class Humanization:
                 if not buttonDisabled(prev_button):
                     prev_button.click()
 
-            time.sleep(random.uniform(0.3, 1.3))
+            time.sleep(random.uniform(0.7, 1.3))
 
     def human_imitation(
         self,
@@ -41,7 +41,7 @@ class Humanization:
         viewport_size: ViewportSize,
     ):
         viewport_height_center = viewport_size.height // 2
-        optimal_viewport_height = viewport_size.height * random.uniform(0.3, 0.7)
+        optimal_viewport_height = viewport_size.height * random.uniform(0.3, 0.65)
         optimal_viewport_center = optimal_viewport_height // 2
         center_offset = viewport_height_center - optimal_viewport_center
 
@@ -55,12 +55,12 @@ class Humanization:
                 break
 
             if button_y_coord > bottom_bound_pos:
-                current_position += random.randint(60, 200)
+                current_position += random.randint(60, 150)
             elif button_y_coord < top_bound_pos:
-                current_position -= random.randint(90, 120)
+                current_position -= random.randint(50, 100)
 
             driver.execute_script(f"window.scrollTo(0, {current_position})")
-            time.sleep(random.uniform(0.13, 0.44))
+            time.sleep(random.uniform(0.13, 0.34))
             button_y_coord = driver.execute_script(
                 "return arguments[0].getBoundingClientRect().y;", show_phone_button
             )

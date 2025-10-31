@@ -1,6 +1,5 @@
 import csv
 import datetime
-import json
 from threading import Thread
 
 import pyperclip
@@ -10,7 +9,7 @@ from textual.screen import ModalScreen, Screen
 from textual.widgets import (Button, Footer, Header, Input, Label, RichLog, Static)
 
 from core.parser import Parser
-from core.paths import RESULTS, ROOT_DIR
+from core.paths import RESULTS
 from core.state_manager import is_data_exists
 
 
@@ -76,15 +75,19 @@ class ParserScreen(Screen):
         self.data = []
         self.proceed = False
         self.results_folder = RESULTS
+        self.url = ""
+        self.cards_amount = 0
 
     def compose(self):
         yield Header(show_clock=True)
         if data := is_data_exists():
+            self.url = data["url"]
+            self.cards_amount = len(data["cards"])
             yield Label(
                 (
                     f"Есть сохраненнные данные, продолжить?\n"
-                    f"Ссылка: {data['url']}\n"
-                    f"Количество карточек: {len(data['cards'])}"
+                    f"Ссылка: {self.url}\n"
+                    f"Количество карточек: {self.cards_amount}"
                 ),
                 id="proceed-question",
             )
@@ -101,23 +104,27 @@ class ParserScreen(Screen):
         yield Footer()
 
     def on_input_submitted(self, event: Input.Submitted):
-        url = event.value
-        if not url:
-            return
-        self.start_paring(url)
+        if url := event.value:
+            self.url = url
+            self.cards_amount = 0
+            self.start_paring()
 
-    def start_paring(self, url):
+    def start_paring(self) -> None:
         folder_name = str(
             datetime.datetime.now()
             .astimezone(tzlocal.get_localzone())
             .strftime("%d.%m.%Y_%H_%M_%S")
         )
-        self.results_folder = RESULTS / folder_name
+        self.results_folder /= folder_name
         self.results_folder.mkdir(parents=True, exist_ok=True)
         container = self.query_one("#main-container", Container)
         container.query_children("#input-link").remove()
 
-        container.mount(Static(f"[bold green]URL:[/bold green] {url}"))
+        cards_str = ""
+        if self.cards_amount:
+            cards_str = f"\nВсего карточек: {self.cards_amount}"
+
+        container.mount(Static(f"[bold green]URL:[/bold green] {self.url}{cards_str}"))
 
         try:
             self.query_one("#proceed").remove()
@@ -138,12 +145,12 @@ class ParserScreen(Screen):
             self.add_log_output(f"Ошибка во время инициализации парсера: {e}", 0)
             return
 
-        t = Thread(target=self._parser_task, args=(url,), daemon=True)
+        t = Thread(target=self._parser_task, daemon=True)
         t.start()
 
-    def _parser_task(self, url):
+    def _parser_task(self) -> None:
         if self.parser:
-            self.parser.start(url, self.proceed)
+            self.parser.start(self.url, self.proceed)
 
     def add_data(self, data: dict) -> None:
         self.data.append(data)
@@ -153,30 +160,18 @@ class ParserScreen(Screen):
     def add_log_output(self, text: str, log_type: int = 1):
         style = "green" if log_type == 1 else "red"
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        self.app.call_from_thread(
-            lambda: self.query_one("#log-output", RichLog).write(
-                f"[dim]{timestamp}[/] [{style}]{text.strip()}[/{style}]"
-            )
+        self.query_one("#log-output", RichLog).write(
+            f"[dim]{timestamp}[/] [{style}]{text.strip()}[/{style}]"
         )
-
-    def log_ended(self):
-        self.query_one("#export-button", Button).disabled = False
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "export-button":
             self.save_data()
         elif event.button.id == "proceed":
             self.proceed = True
-            data = json.loads((ROOT_DIR / "state.json").read_text())
-            if data:
-                self.start_paring(data["url"])
-            else:
-                self.start_paring(None)
+            self.start_paring()
 
-    def save_data(self):
-        if not RESULTS.exists():
-            RESULTS.mkdir(parents=True, exist_ok=True)
-
+    def save_data(self) -> None:
         filename = (
             self.results_folder
             / f'export_{datetime.datetime.now().astimezone(tzlocal.get_localzone()).strftime("%d.%m.%Y_%H_%M_%S")}.csv'
@@ -206,8 +201,8 @@ class ParserScreen(Screen):
 
         self.query_one("#log-output", RichLog).write(
             (
-                f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/]"
-                f"[green]Файл сохранен по пути [cyan]{filename}[/cyan][/green]"
+                f"[dim]{datetime.datetime.now().strftime("%H:%M:%S")}[/] "
+                f"[purple]Файл сохранен по пути[/purple] [cyan]{filename}[/cyan]"
             )
         )
 
@@ -224,7 +219,6 @@ class ParserScreen(Screen):
                 def check_quit(finish: bool | None) -> None:
                     if finish and self.parser:
                         self.parser.close()
-                        self.log_ended()
 
                 self.app.push_screen(StopParsingScreen(), check_quit)
             else:

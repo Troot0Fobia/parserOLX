@@ -13,6 +13,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from textual.app import App
+from urllib3.exceptions import ReadTimeoutError
 
 from core.paths import get_chrome_profiles_path
 from core.state_manager import ParserState, load_state, save_state
@@ -24,6 +25,9 @@ BTN_SHOW_PHONE = 'button[data-testid="show-phone"].css-1mems40'
 PHONE_VALUE = 'a[data-testid="contact-phone"]'
 USER_NAME = '[data-testid="user-profile-user-name"]'
 USER_PROFILE_LINK = 'a[data-testid="user-profile-link"][name="user_ads"]'
+
+COOKIES_CONTAINER = 'div[data-testid="cookies-overlay__container"]'
+COOKIES_CLOSE_BUTTON = 'button[data-cy="dismiss-cookies-overlay"]'
 
 MAP_ASIDE = 'div[data-testid="map-aside-section"]'
 MAP_CITY = ".css-9pna1a"
@@ -105,15 +109,22 @@ class Parser:
             try:
                 if not self.profile and not self.change_profile():
                     raise ValueError(
-                        f"Current profile {self.profile} does not authorized. Switching..."
+                        f"Current profile '{self.profile}' does not authorized. Switching..."
                     )
 
                 self.driver.get(card_link)
+
+                time.sleep(1)
+                self.pass_cookies_overlay()
+
                 next_button, prev_button = self.get_image_buttons()
                 if next_button and prev_button:
-                    self.humanization.scroll_images(
-                        next_button=next_button, prev_button=prev_button
-                    )
+                    try:
+                        self.humanization.scroll_images(
+                            next_button=next_button, prev_button=prev_button
+                        )
+                    except Exception:
+                        self.log_output("Failed scroll images. Skip this function", 0)
 
                 phone_button = self.find_show_phone()
                 if phone_button is None:
@@ -135,10 +146,14 @@ class Parser:
                 time.sleep(3)
 
                 if self.is_captcha():
-                    raise ValueError("Profile catched captcha. Switching...")
+                    raise ValueError(
+                        f"Profile '{self.profile}' catched captcha. Switching..."
+                    )
 
                 if self.is_spam():
-                    raise ValueError("Profile catched spam block. Switching...")
+                    raise ValueError(
+                        f"Profile '{self.profile}' catched spam block. Switching..."
+                    )
 
                 phone = self.get_phone()
                 user_name = self.get_user_name()
@@ -162,6 +177,10 @@ class Parser:
                         "region": region,
                     }
                 )
+            except ReadTimeoutError:
+                self.log_output("Возникла ошибка таймаута, продолжаем", 0)
+                self.state.cards.append(card_link)
+                self.processed_cards -= 1
             except ValueError as e:
                 self.log_output(
                     (
@@ -202,7 +221,6 @@ class Parser:
         self.get_user_viewport_size()
 
         if not self.is_auth():
-            self.profile = None
             return False
 
         return True
@@ -235,6 +253,18 @@ class Parser:
         self.options.arguments.clear()
         for arg in args:
             self.options.add_argument(arg)
+
+    def pass_cookies_overlay(self) -> None:
+        try:
+            self.driver.find_element(By.CSS_SELECTOR, COOKIES_CONTAINER)
+            if close_cookies_button := WebDriverWait(
+                self.driver, DEFAULT_TIMEOUT
+            ).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, COOKIES_CLOSE_BUTTON))
+            ):
+                close_cookies_button.click()
+        except Exception:
+            pass
 
     def get_image_buttons(self) -> tuple[WebElement, WebElement] | tuple[None, None]:
         try:

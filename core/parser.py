@@ -206,6 +206,9 @@ class Parser:
                 )
                 self.state.cards.append(card_link)
                 self.processed_cards -= 1
+                self.profiles.append(self.profile)
+                self.stop()
+                self.profile = None
             finally:
                 self.processed_cards += 1
 

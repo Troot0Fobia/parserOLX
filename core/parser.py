@@ -56,7 +56,7 @@ class Parser:
         self,
         app: App,
         log_output: Callable[[str, int], None],
-        add_data: Callable[[dict], None],
+        add_data: Callable[[dict, bool], None],
     ):
         self.main_app = app
         self.log_output = log_output
@@ -175,7 +175,8 @@ class Parser:
                         "profile_link": profile_link,
                         "city": city,
                         "region": region,
-                    }
+                    },
+                    False,
                 )
             except ReadTimeoutError:
                 self.log_output("Возникла ошибка таймаута, продолжаем", 0)
@@ -206,6 +207,9 @@ class Parser:
                 self.processed_cards += 1
 
         save_state(self.state)
+        self.add_data({}, True)
+        self.log_output("Парсинг окончен! Результаты сохранены", 1)
+        self.stop()
 
     def change_profile(self) -> bool:
         self.stop()

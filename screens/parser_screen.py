@@ -152,9 +152,10 @@ class ParserScreen(Screen):
         if self.parser:
             self.parser.start(self.url, self.proceed)
 
-    def add_data(self, data: dict) -> None:
-        self.data.append(data)
-        if len(self.data) % 15 == 0:
+    def add_data(self, data: dict, force_save: bool = False) -> None:
+        if data:
+            self.data.append(data)
+        if len(self.data) % 15 == 0 or force_save:
             self.save_data()
 
     def add_log_output(self, text: str, log_type: int = 1):

@@ -182,6 +182,9 @@ class Parser:
                 self.log_output("Возникла ошибка таймаута, продолжаем", 0)
                 self.state.cards.append(card_link)
                 self.processed_cards -= 1
+                self.profiles.append(self.profile)
+                self.stop()
+                self.profile = None
             except ValueError as e:
                 self.log_output(
                     (

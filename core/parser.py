@@ -65,7 +65,8 @@ class Parser:
         self.state = ParserState()
         self.profile = None
         self.processed_cards = 0
-        self.driver = webdriver.Chrome()
+        self._driver = None
+        self.browser_pid = 0
         self.humanization = Humanization()
         self.viewport_size = ViewportSize()
 
@@ -79,6 +80,15 @@ class Parser:
             raise ValueError("Не удалось получить путь к профилям")
 
         self.options.add_argument(f"--user-data-dir={profiles_path}")
+
+    @property
+    def driver(self):
+        if self._driver is None:
+            self._driver = self._create_driver()
+
+        if self._driver.service:
+            self.browser_pid = self._driver.service.process.pid
+        return self._driver
 
     def start(
         self,
@@ -111,6 +121,11 @@ class Parser:
                     raise ValueError(
                         f"Current profile '{self.profile}' does not authorized. Switching..."
                     )
+
+                if not self.driver:
+                    self.profiles.append(self.profile)
+                    self.profile = None
+                    continue
 
                 self.driver.get(card_link)
 
@@ -183,8 +198,17 @@ class Parser:
                 self.state.cards.append(card_link)
                 self.processed_cards -= 1
                 self.profiles.append(self.profile)
-                self.stop()
                 self.profile = None
+                try:
+                    import psutil
+                    if self.browser_pid:
+                        proc = psutil.Process(self.browser_pid)
+                        for child in proc.children(recursive=True):
+                            child.kill()
+                        proc.kill()
+                        self.browser_pid = 0
+                except Exception:
+                    self.log_output("Failed force close browser", 0)
             except ValueError as e:
                 self.log_output(
                     (
@@ -217,6 +241,11 @@ class Parser:
         self.log_output("Парсинг окончен! Результаты сохранены", 1)
         self.stop()
 
+    def _create_driver(self):
+        if self.profile:
+            self.options.add_argument(f"--profile-directory={self.profile}")
+        return webdriver.Chrome(options=self.options)
+
     def change_profile(self) -> bool:
         self.stop()
         if not self.profiles:
@@ -224,8 +253,6 @@ class Parser:
 
         self.profile = self.profiles.pop()
 
-        self.options.add_argument(f"--profile-directory={self.profile}")
-        self.driver = webdriver.Chrome(options=self.options)
         self.driver.get(self.state.url)
         self.driver.maximize_window()
         self.get_user_viewport_size()
@@ -384,8 +411,9 @@ class Parser:
 
     def stop(self) -> None:
         save_state(self.state)
-        if self.driver:
-            self.driver.quit()
+        if self._driver:
+            self._driver.quit()
+            self._driver = None
         self.refresh_options()
 
     def close(self) -> None:

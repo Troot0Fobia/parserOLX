@@ -240,6 +240,7 @@ class Parser:
         self.add_data({}, True)
         self.log_output("Парсинг окончен! Результаты сохранены", 1)
         self.stop()
+        self._running = False
 
     def _create_driver(self):
         if self.profile:
